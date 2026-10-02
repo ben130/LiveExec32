@@ -4606,6 +4606,42 @@ u32 LC32_CoreFoundation_Dispatch(u32 opcodeValue, u32 guestCall, u32) {
                 fileSecurity, static_cast<CFFileSecurityClearOptions>(
                     SlotU32(call, 1)));
         }
+        case LC32CoreFoundationOpURLCreatePropertyFromResource: {
+            if(!RequireSlots(call, 3)) return 0;
+            CFURLRef url = SlotHostObject<CFURLRef>(call, 0);
+            CFStringRef property = SlotHostObject<CFStringRef>(call, 1);
+            const u32 guestError = SlotU32(call, 2);
+            if(!url || !property ||
+               (guestError && !GuestRangeIsValid(guestError, sizeof(SInt32)))) {
+                if(guestError) {
+                    const SInt32 code = -15; /* kCFURLImproperArgumentsError */
+                    if(!WriteGuestValue(guestError, code)) return 0;
+                }
+                return 0;
+            }
+
+            CFTypeRef result = nullptr;
+            CFErrorRef error = nullptr;
+            const Boolean success = CFURLCopyResourcePropertyForKey(
+                url, property, &result, guestError ? &error : nullptr);
+
+            if(guestError) {
+                /* kCFURLUnknownError for the deprecated SInt32 API. */
+                const SInt32 code = success ? 0 : -10;
+                if(!WriteGuestValue(guestError, code)) {
+                    if(error) CFRelease(error);
+                    if(result) CFRelease(result);
+                    return 0;
+                }
+            }
+            if(error) CFRelease(error);
+
+            if(!success) {
+                if(result) CFRelease(result);
+                return 0;
+            }
+            return GuestForCreatedObject(result);
+        }
         case LC32CoreFoundationOpURLCopyResourcePropertyForKey: {
             if(!RequireSlots(call, 4)) return 0;
             CFURLRef url = SlotHostObject<CFURLRef>(call, 0);

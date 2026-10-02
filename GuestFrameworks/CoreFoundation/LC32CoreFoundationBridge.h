@@ -358,6 +358,7 @@ typedef enum : uint32_t {
     LC32CoreFoundationOpURLCreateFilePathURL = 1004,
     LC32CoreFoundationOpURLCreateFileReferenceURL = 1005,
     LC32CoreFoundationOpURLCreateData = 1006,
+    LC32CoreFoundationOpURLCreatePropertyFromResource = 1007,
 
     /* Stream constructors that do not install guest callbacks. */
     LC32CoreFoundationOpReadStreamCreateWithFile = 1100,
