@@ -811,22 +811,6 @@ bool LC32GuestUsesFixedLandscapePhoneCanvas(void) {
         .usesFixedLandscapePhoneCanvas;
 }
 
-/* Manual scaling for fixed legacy canvases.
- *
- * Change this value for initial testing:
- *   1.00 = existing automatic size
- *   0.75 = 75% of the automatically fitted size
- *   0.50 = 50% of the automatically fitted size
- *
- * The scale is applied to the native UIWindow transform, so UIKit
- * hit-testing uses the same coordinate transform as the rendered canvas.
- */
-static constexpr CGFloat kLC32LegacyCanvasScaleOverride = 3.00;
-
-CGFloat LC32LegacyCanvasScaleOverride(void) {
-    return kLC32LegacyCanvasScaleOverride;
-}
-
 bool LC32GuestMayRetainLegacyLandscapePhoneCanvas(void) {
     return LC32GuestLegacyCanvasPolicy()
         .mayRetainLegacyLandscapePhoneCanvas;
@@ -1408,10 +1392,9 @@ void LC32FitRootlessWindowPlacement(UIWindow *window, CALayer *layer) {
     /* Coordinate conversion removes our existing scale. Put the viewport
      * back into the native parent space before fitting, so repeated passes
      * neither compound nor cancel the previous placement. */
-    const CGFloat automaticScale =
-        MIN(viewport.size.width / bounds.size.width,
-            viewport.size.height / bounds.size.height) * current.a;
-    const CGFloat scale = automaticScale * LC32LegacyCanvasScaleOverride();
+    const CGFloat scale = MIN(viewport.size.width / bounds.size.width,
+                              viewport.size.height / bounds.size.height) *
+        current.a;
     const CGPoint targetCenter = {
         center.x + (CGRectGetMidX(viewport) - CGRectGetMidX(bounds)) * current.a,
         center.y + (CGRectGetMidY(viewport) - CGRectGetMidY(bounds)) * current.d,
@@ -1590,16 +1573,9 @@ bool LC32FitLegacyDirectWindowLayers(UIWindow *window) {
 
     constexpr CGSize logicalSize = {320, 480};
     const CGSize turnedSize = {logicalSize.height, logicalSize.width};
-    const CGFloat automaticScale = MIN(
+    const CGFloat scale = MIN(
         windowBounds.size.width / turnedSize.width,
         windowBounds.size.height / turnedSize.height);
-    /* Rootless phone canvases are scaled again at the UIWindow level below.
-     * Do not apply the override to the sublayer as well or the two transforms
-     * would compound and UIKit's hit-testing transform would no longer match
-     * the visible canvas. The simulator-only direct path has no native-window
-     * placement path, so it applies the override here instead. */
-    const CGFloat scale = automaticScale *
-        (rootlessPhoneCanvas ? 1.0 : LC32LegacyCanvasScaleOverride());
     if(!(scale > 0) || !isfinite(scale)) return true;
 
     CGAffineTransform transform = CGAffineTransformScale(
